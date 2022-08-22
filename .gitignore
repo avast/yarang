@@ -1,0 +1,5 @@
+build/
+.ycm*
+compile_commands.json
+
+patterns.txt

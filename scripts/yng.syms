@@ -1,0 +1,5 @@
+yng_initialize
+yng_scan_data
+yng_finalize
+yng_new_scanner
+yng_free_scanner

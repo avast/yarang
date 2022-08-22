@@ -1,0 +1,93 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 8bc6077..26da2e2 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1182,6 +1182,7 @@ if (NOT FAT_RUNTIME)
+ 
+         add_library(hs_runtime STATIC src/hs_version.c src/hs_valid_platform.c $<TARGET_OBJECTS:hs_exec>)
+         set_target_properties(hs_runtime PROPERTIES LINKER_LANGUAGE C)
++        set_target_properties(hs_runtime PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
+ 
+         add_library(hs_compile OBJECT ${hs_compile_SRCS})
+ 
+@@ -1190,6 +1191,7 @@ if (NOT FAT_RUNTIME)
+             src/hs_valid_platform.c
+             $<TARGET_OBJECTS:hs_exec>
+             $<TARGET_OBJECTS:hs_compile>)
++        set_target_properties(hs PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
+     endif (BUILD_STATIC_LIBS)
+ 
+     if (BUILD_STATIC_AND_SHARED OR BUILD_SHARED_LIBS)
+@@ -1217,6 +1219,7 @@ else (FAT_RUNTIME)
+        set_target_properties(hs_exec_core2 PROPERTIES
+            COMPILE_FLAGS "-march=core2"
+            RULE_LAUNCH_COMPILE "${BUILD_WRAPPER} core2 ${CMAKE_MODULE_PATH}/keep.syms.in"
++           POSITION_INDEPENDENT_CODE TRUE
+            )
+ 
+        add_library(hs_exec_corei7 OBJECT ${hs_exec_SRCS})
+@@ -1224,6 +1227,7 @@ else (FAT_RUNTIME)
+        set_target_properties(hs_exec_corei7 PROPERTIES
+            COMPILE_FLAGS "-march=corei7"
+            RULE_LAUNCH_COMPILE "${BUILD_WRAPPER} corei7 ${CMAKE_MODULE_PATH}/keep.syms.in"
++           POSITION_INDEPENDENT_CODE TRUE
+            )
+ 
+        add_library(hs_exec_avx2 OBJECT ${hs_exec_SRCS} ${hs_exec_avx2_SRCS})
+@@ -1231,6 +1235,7 @@ else (FAT_RUNTIME)
+        set_target_properties(hs_exec_avx2 PROPERTIES
+            COMPILE_FLAGS "-march=core-avx2"
+            RULE_LAUNCH_COMPILE "${BUILD_WRAPPER} avx2 ${CMAKE_MODULE_PATH}/keep.syms.in"
++           POSITION_INDEPENDENT_CODE TRUE
+            )
+        if (BUILD_AVX512)
+            add_library(hs_exec_avx512 OBJECT ${hs_exec_SRCS} ${hs_exec_avx2_SRCS})
+@@ -1238,7 +1243,8 @@ else (FAT_RUNTIME)
+            set_target_properties(hs_exec_avx512 PROPERTIES
+                COMPILE_FLAGS "${SKYLAKE_FLAG}"
+                RULE_LAUNCH_COMPILE "${BUILD_WRAPPER} avx512 ${CMAKE_MODULE_PATH}/keep.syms.in"
+-               )
++               POSITION_INDEPENDENT_CODE TRUE
++           )
+        endif (BUILD_AVX512)
+        if (BUILD_AVX512VBMI)
+            add_library(hs_exec_avx512vbmi OBJECT ${hs_exec_SRCS} ${hs_exec_avx2_SRCS})
+@@ -1252,7 +1258,8 @@ else (FAT_RUNTIME)
+        add_library(hs_exec_common OBJECT
+            ${hs_exec_common_SRCS}
+            src/dispatcher.c
+-           )
++       )
++       set_target_properties(hs_exec_common PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
+ 
+        # hs_version.c is added explicitly to avoid some build systems that refuse to
+        # create a lib without any src (I'm looking at you Xcode)
+@@ -1261,6 +1268,7 @@ else (FAT_RUNTIME)
+            $<TARGET_OBJECTS:hs_exec_common>
+            ${RUNTIME_LIBS})
+        set_target_properties(hs_runtime PROPERTIES LINKER_LANGUAGE C)
++       set_target_properties(hs_runtime PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
+         add_library(hs_compile OBJECT ${hs_compile_SRCS})
+ 
+        # we want the static lib for testing
+@@ -1268,6 +1276,7 @@ else (FAT_RUNTIME)
+            $<TARGET_OBJECTS:hs_compile>
+            $<TARGET_OBJECTS:hs_exec_common>
+            ${RUNTIME_LIBS})
++       set_target_properties(hs PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
+ 
+     endif (BUILD_STATIC_LIBS)
+ 
+diff --git a/cmake/build_wrapper.sh b/cmake/build_wrapper.sh
+index 1962813..895610c 100755
+--- a/cmake/build_wrapper.sh
++++ b/cmake/build_wrapper.sh
+@@ -17,7 +17,7 @@ KEEPSYMS=$(mktemp -p /tmp keep.syms.XXXXX)
+ LIBC_SO=$("$@" --print-file-name=libc.so.6)
+ cp ${KEEPSYMS_IN} ${KEEPSYMS}
+ # get all symbols from libc and turn them into patterns
+-nm -f p -g -D ${LIBC_SO} | sed -s 's/\([^ ]*\).*/^\1$/' >> ${KEEPSYMS}
++nm -f p -g -D ${LIBC_SO} | sed -s 's/\([^ @]*\).*/^\1$/' >> ${KEEPSYMS}
+ # build the object
+ "$@"
+ # rename the symbols in the object
